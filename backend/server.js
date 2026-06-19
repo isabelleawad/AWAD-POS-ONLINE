@@ -8,11 +8,11 @@ app.use(cors());
 app.use(express.json({ limit: "10mb" }));
 
 const db = mysql.createConnection({
-    host: "127.0.0.1",
-    port: 3308,
-    user: "root",
-    password: "123456",
-    database: "awad_pos"
+    host: process.env.MYSQLHOST,
+    port: process.env.MYSQLPORT,
+    user: process.env.MYSQLUSER,
+    password: process.env.MYSQLPASSWORD,
+    database: process.env.MYSQLDATABASE
 });
 
 db.connect((err) => {
