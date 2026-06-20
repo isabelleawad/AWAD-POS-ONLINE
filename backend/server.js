@@ -8,11 +8,11 @@ app.use(cors());
 app.use(express.json({ limit: "10mb" }));
 
 const db = mysql.createConnection({
-    host: "127.0.0.1",
-    port: 3308,
-    user: "root",
-    password: "123456",
-    database: "awad_pos"
+    host: process.env.MYSQLHOST,
+    port: process.env.MYSQLPORT,
+    user: process.env.MYSQLUSER,
+    password: process.env.MYSQLPASSWORD,
+    database: process.env.MYSQLDATABASE
 });
 
 db.connect((err) => {
@@ -87,6 +87,8 @@ app.delete("/products/:id", (req, res) => {
     });
 });
 
-app.listen(3000, "0.0.0.0", () => {
-    console.log("Server running on port 3000");
+const PORT = process.env.PORT || 3000;
+
+app.listen(PORT, "0.0.0.0", () => {
+    console.log("Server running on port " + PORT);
 });
