@@ -404,9 +404,6 @@
   </header>
 
   <div class="container hidden" id="home">
-    <div class="top-actions">
-      <button class="success" onclick="openProductModal()">➕ Add Product</button>
-    </div>
     <div id="productList" class="grid-products"></div>
   </div>
 
@@ -439,11 +436,6 @@
       <h3 id="productModalTitle">Add Product</h3>
 
       <div class="form-group">
-        <label for="productCode">Product Code</label>
-        <input id="productCode" type="text" placeholder="Enter product code">
-      </div>
-
-      <div class="form-group">
         <label for="productBarcode">Barcode</label>
         <input id="productBarcode" type="text" placeholder="Enter barcode">
       </div>
@@ -464,13 +456,13 @@
       </div>
 
       <div class="form-group">
-        <label for="productStock">Stock</label>
-        <input id="productStock" type="number" min="0" step="1" placeholder="Enter stock">
+        <label for="productCost">Cost</label>
+        <input id="productCost" type="number" min="0" step="0.01" placeholder="Enter cost">
       </div>
 
       <div class="form-group">
-        <label for="productImg">Image URL</label>
-        <input id="productImg" type="text" placeholder="Enter image URL">
+        <label for="productStock">Stock</label>
+        <input id="productStock" type="number" min="0" step="1" placeholder="Enter stock">
       </div>
 
       <div class="modal-actions">
@@ -515,6 +507,7 @@
   <div class="container hidden" id="adminPage">
     <h2>💰 Admin Cost / Profit Dashboard</h2>
     <div class="top-actions">
+      <button class="success" onclick="openProductModal()">➕ Add Product</button>
       <button onclick="renderAdminProfit()">🔄 Refresh</button>
       <button class="secondary" onclick="adminLogout()">Logout Admin</button>
     </div>
@@ -554,13 +547,12 @@
 
     const productModal = document.getElementById("productModal");
     const productModalTitle = document.getElementById("productModalTitle");
-    const productCode = document.getElementById("productCode");
     const productBarcode = document.getElementById("productBarcode");
     const productName = document.getElementById("productName");
     const productDesc = document.getElementById("productDesc");
     const productPrice = document.getElementById("productPrice");
+    const productCost = document.getElementById("productCost");
     const productStock = document.getElementById("productStock");
-    const productImg = document.getElementById("productImg");
 
     const passModal = document.getElementById("passModal");
     const passInput = document.getElementById("passInput");
@@ -691,20 +683,16 @@
         const realIndex = products.indexOf(p);
         productList.innerHTML += `
           <div class="product">
-            <img src="${p.img || 'https://via.placeholder.com/110'}" alt="${p.name || 'product'}">
             <div class="name">${p.name || ""}</div>
             <div class="desc">${p.desc || "No description"}</div>
             <div class="meta">
               <div><b>Price:</b> ${Number(p.price || 0).toFixed(2)}$</div>
               <div><b>Stock:</b> ${p.stock ?? 0}</div>
-              <div><b>Code:</b> ${p.code || "-"}</div>
               <div><b>Barcode:</b> ${p.barcode || "-"}</div>
             </div>
             <input type="number" value="1" min="1" class="qty" onkeydown="handleQtyEnter(event, ${realIndex}, this)">
             <div class="actions">
               <button onclick="addCart(${realIndex}, this)">Add to Cart</button>
-              <button class="secondary" onclick="openProductModal(${realIndex})">Edit</button>
-              <button class="danger" onclick="askPass('deleteProduct', ${realIndex})">Delete</button>
             </div>
           </div>`;
       });
@@ -714,22 +702,20 @@
       editingIndex = i;
       if (i !== null) {
         productModalTitle.textContent = "Edit Product";
-        productCode.value = products[i].code || "";
         productBarcode.value = products[i].barcode || "";
         productName.value = products[i].name || "";
         productDesc.value = products[i].desc || "";
         productPrice.value = products[i].price ?? "";
+        productCost.value = products[i].cost ?? "";
         productStock.value = products[i].stock ?? "";
-        productImg.value = products[i].img || "";
       } else {
         productModalTitle.textContent = "Add Product";
-        productCode.value = "";
         productBarcode.value = "";
         productName.value = "";
         productDesc.value = "";
         productPrice.value = "";
+        productCost.value = "";
         productStock.value = "";
-        productImg.value = "";
       }
       productModal.classList.remove("hidden");
       setTimeout(() => productName.focus(), 100);
@@ -742,14 +728,14 @@
 
     function productPayload() {
       return {
-        code: productCode.value.trim(),
+        code: editingIndex !== null && products[editingIndex] ? (products[editingIndex].code || "") : "",
         barcode: productBarcode.value.trim(),
         name: productName.value.trim(),
         description: productDesc.value.trim(),
         price: productPrice.value === "" ? 0 : Number(productPrice.value),
         stock: productStock.value === "" ? 0 : Number(productStock.value),
-        image: productImg.value.trim(),
-        cost: editingIndex !== null && products[editingIndex] ? Number(products[editingIndex].cost || 0) : 0
+        image: editingIndex !== null && products[editingIndex] ? (products[editingIndex].img || "") : "",
+        cost: productCost.value === "" ? 0 : Number(productCost.value)
       };
     }
 
@@ -839,7 +825,7 @@
         total += sub;
         cartList.innerHTML += `
           <li>
-            ${x.name} ${x.code ? "(" + x.code + ")" : ""} x${x.qty} = ${sub.toFixed(2)}$
+            ${x.name} x${x.qty} = ${sub.toFixed(2)}$
             <button class="danger" style="margin-left:8px;padding:4px 8px;font-size:12px;" onclick="removeCartItem(${i})">Remove</button>
           </li>`;
       });
@@ -921,7 +907,7 @@
       }
       [...reportsData].reverse().forEach((r, i) => {
         const realIndex = reportsData.length - 1 - i;
-        const items = r.cart.map(x => `${x.name} ${x.code ? "(" + x.code + ")" : ""} x${x.qty} = ${((x.qty || 0) * (x.price || 0)).toFixed(2)}$`).join("<br>");
+        const items = r.cart.map(x => `${x.name} x${x.qty} = ${((x.qty || 0) * (x.price || 0)).toFixed(2)}$`).join("<br>");
         reportsGrid.innerHTML += `
           <div class="report-box">
             <div>
@@ -1006,8 +992,7 @@
       doc.setFont("helvetica", "bold");
       doc.setFillColor(230, 230, 230);
       doc.rect(10, y - 5, 190, 8, "F");
-      doc.text("Code", 12, y);
-      doc.text("Product", 38, y);
+      doc.text("Product", 12, y);
       doc.text("Qty", 120, y);
       doc.text("Price", 140, y);
       doc.text("Total", 170, y);
@@ -1016,8 +1001,7 @@
       r.cart.forEach(item => {
         const itemTotal = (item.qty || 0) * (item.price || 0);
         if (y > 270) { doc.addPage(); y = 20; }
-        doc.text(String(item.code || "-"), 12, y);
-        doc.text(String(item.name || "").substring(0, 28), 38, y);
+        doc.text(String(item.name || "").substring(0, 40), 12, y);
         doc.text(String(item.qty || 0), 120, y);
         doc.text(`${Number(item.price || 0).toFixed(2)}$`, 140, y);
         doc.text(`${itemTotal.toFixed(2)}$`, 170, y);
@@ -1042,7 +1026,7 @@
         renderProducts(products);
         return;
       }
-      const filtered = products.filter(p => [p.name, p.code, p.barcode, p.desc].map(normalizeValue).join(" ").includes(value));
+      const filtered = products.filter(p => [p.name, p.barcode, p.desc].map(normalizeValue).join(" ").includes(value));
       renderProducts(filtered);
     }
 
@@ -1176,7 +1160,6 @@
           <table class="admin-table">
             <tr>
               <th>Product</th>
-              <th>Code</th>
               <th>Qty Sold</th>
               <th>Cost / Unit</th>
               <th>Price / Unit</th>
@@ -1190,7 +1173,6 @@
           html += `
             <tr>
               <td>${row.name}</td>
-              <td>${row.code}</td>
               <td>${row.qty}</td>
               <td>${row.cost.toFixed(2)}$</td>
               <td>${row.price.toFixed(2)}$</td>
@@ -1206,7 +1188,7 @@
 
       html += `
         <br>
-        <h3>Manage Cost / Price From SQL Products</h3>
+        <h3>Manage SQL Products</h3>
         <table class="admin-table">
           <tr>
             <th>ID</th>
@@ -1233,11 +1215,14 @@
             <td>${p.id || "-"}</td>
             <td>${p.name || "-"}</td>
             <td>${stock}</td>
-            <td><input id="adminCost${i}" type="number" min="0" step="0.01" value="${cost}"></td>
-            <td><input id="adminPrice${i}" type="number" min="0" step="0.01" value="${price}"></td>
+            <td>${cost.toFixed(2)}$</td>
+            <td>${price.toFixed(2)}$</td>
             <td class="${profitClass}">${profit.toFixed(2)}$</td>
             <td class="${lineProfit >= 0 ? "profit-positive" : "profit-negative"}">${lineProfit.toFixed(2)}$</td>
-            <td><button class="success" onclick="saveAdminFinance(${i})">Save</button></td>
+            <td>
+              <button class="secondary" onclick="openProductModal(${i})">Edit</button>
+              <button class="danger" onclick="deleteProductFromAdmin(${i})">Delete</button>
+            </td>
           </tr>
         `;
       });
@@ -1246,41 +1231,25 @@
       adminProducts.innerHTML = html;
     }
 
-    function saveAdminFinance(i) {
+    function deleteProductFromAdmin(i) {
       const p = products[i];
       if (!p || !p.id) return;
+      if (!confirm(`Delete product: ${p.name || "this product"}?`)) return;
 
-      const newCost = Number(document.getElementById(`adminCost${i}`).value || 0);
-      const newPrice = Number(document.getElementById(`adminPrice${i}`).value || 0);
-
-      fetch(`${API_URL}/products/${p.id}`, {
-        method: "PUT",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          code: p.code,
-          barcode: p.barcode,
-          name: p.name,
-          description: p.desc,
-          price: newPrice,
-          stock: p.stock,
-          image: p.img,
-          cost: newCost
-        })
-      })
-        .then(res => res.json())
+      fetch(`${API_URL}/products/${p.id}`, { method: "DELETE" })
         .then(() => {
-          showMessage("Cost/Price updated", "success");
+          showMessage("Product deleted", "info");
           loadProductsFromSQL();
           setTimeout(renderAdminProfit, 300);
         })
         .catch(err => {
           console.log(err);
-          showMessage("Admin update failed", "error");
+          showMessage("Delete failed", "error");
         });
     }
 
     function setupEnterNavigation() {
-      const productInputs = [productCode, productBarcode, productName, productDesc, productPrice, productStock, productImg];
+      const productInputs = [productBarcode, productName, productDesc, productPrice, productCost, productStock];
       productInputs.forEach((input, idx) => {
         input.addEventListener("keydown", function(e) {
           if (e.key === "Enter" && this.tagName !== "TEXTAREA") {
