@@ -377,6 +377,12 @@
       padding: 7px;
     }
 
+    .admin-desc-cell {
+      max-width: 260px;
+      white-space: normal;
+      word-break: break-word;
+    }
+
     .profit-positive { color: #27ae60; font-weight: bold; }
     .profit-negative { color: #e74c3c; font-weight: bold; }
 
@@ -969,55 +975,92 @@
       closePassModal();
     }
 
+    function escapeHtml(value) {
+      return String(value ?? "")
+        .replace(/&/g, "&amp;")
+        .replace(/</g, "&lt;")
+        .replace(/>/g, "&gt;")
+        .replace(/"/g, "&quot;")
+        .replace(/'/g, "&#039;");
+    }
+
+    function getTextDirection(text) {
+      return /[؀-ۿݐ-ݿࢠ-ࣿﭐ-﷿ﹰ-﻿]/.test(String(text || "")) ? "rtl" : "ltr";
+    }
+
     function pdf(i) {
-      const { jsPDF } = window.jspdf;
-      const doc = new jsPDF();
       const r = reportsData[i];
-      let y = 15;
-      doc.setFont("helvetica", "bold");
-      doc.setFontSize(18);
-      doc.text("AWAD POS SALES REPORT", 105, y, { align: "center" });
-      y += 10;
-      doc.line(10, y, 200, y);
-      y += 10;
-      doc.setFont("helvetica", "normal");
-      doc.setFontSize(11);
-      doc.text(`Date: ${r.date}`, 10, y);
-      doc.text(`Time: ${r.time || "-"}`, 140, y);
-      y += 7;
-      doc.text(`Client: ${r.client || "-"}`, 10, y);
-      y += 7;
-      doc.text(`Payment Method: ${r.method}`, 10, y);
-      y += 10;
-      doc.setFont("helvetica", "bold");
-      doc.setFillColor(230, 230, 230);
-      doc.rect(10, y - 5, 190, 8, "F");
-      doc.text("Product", 12, y);
-      doc.text("Qty", 120, y);
-      doc.text("Price", 140, y);
-      doc.text("Total", 170, y);
-      y += 8;
-      doc.setFont("helvetica", "normal");
-      r.cart.forEach(item => {
-        const itemTotal = (item.qty || 0) * (item.price || 0);
-        if (y > 270) { doc.addPage(); y = 20; }
-        doc.text(String(item.name || "").substring(0, 40), 12, y);
-        doc.text(String(item.qty || 0), 120, y);
-        doc.text(`${Number(item.price || 0).toFixed(2)}$`, 140, y);
-        doc.text(`${itemTotal.toFixed(2)}$`, 170, y);
-        y += 8;
-      });
-      y += 5;
-      doc.line(10, y, 200, y);
-      y += 10;
-      doc.setFont("helvetica", "bold");
-      doc.setFontSize(14);
-      doc.text(`Grand Total: ${Number(r.total).toFixed(2)}$`, 200, y, { align: "right" });
-      y += 15;
-      doc.setFont("helvetica", "normal");
-      doc.setFontSize(10);
-      doc.text("Thank you for using AWAD POS", 105, y, { align: "center" });
-      doc.save(`report-${r.client || 'client'}-${r.date}.pdf`);
+      const rows = (r.cart || []).map(item => {
+        const itemTotal = (Number(item.qty || 0) * Number(item.price || 0));
+        const name = escapeHtml(item.name || "-");
+        const dir = getTextDirection(item.name);
+        return `
+          <tr>
+            <td class="product-name" dir="${dir}">${name}</td>
+            <td>${Number(item.qty || 0)}</td>
+            <td>${Number(item.price || 0).toFixed(2)}$</td>
+            <td>${itemTotal.toFixed(2)}$</td>
+          </tr>`;
+      }).join("");
+
+      const reportHtml = `
+        <!DOCTYPE html>
+        <html lang="en">
+        <head>
+          <meta charset="UTF-8">
+          <title>AWAD POS SALES REPORT</title>
+          <style>
+            body { font-family: Arial, Tahoma, 'Noto Sans Arabic', sans-serif; margin: 40px; color: #000; }
+            h1 { text-align: center; font-size: 28px; letter-spacing: 1px; }
+            .line { border-top: 1px solid #777; margin: 35px 0 25px; }
+            .info { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; font-size: 18px; margin-bottom: 18px; }
+            .right { text-align: right; }
+            table { width: 100%; border-collapse: collapse; margin-top: 20px; font-size: 18px; }
+            th { background: #e9e9e9; text-align: left; padding: 9px; }
+            td { padding: 9px; vertical-align: top; }
+            .product-name { max-width: 390px; word-break: break-word; unicode-bidi: plaintext; }
+            .total-line { border-top: 1px solid #777; margin-top: 45px; padding-top: 25px; text-align: right; font-size: 24px; font-weight: bold; }
+            .thanks { text-align: center; margin-top: 50px; font-size: 16px; }
+            @media print { button { display: none; } body { margin: 30px; } }
+          </style>
+        </head>
+        <body>
+          <h1>AWAD POS SALES REPORT</h1>
+          <div class="line"></div>
+          <div class="info">
+            <div>Date: ${escapeHtml(r.date)}</div>
+            <div class="right">Time: ${escapeHtml(r.time || "-")}</div>
+            <div>Client: ${escapeHtml(r.client || "-")}</div>
+            <div></div>
+            <div>Payment Method: ${escapeHtml(r.method || "-")}</div>
+          </div>
+          <table>
+            <thead>
+              <tr>
+                <th>Product</th>
+                <th>Qty</th>
+                <th>Price</th>
+                <th>Total</th>
+              </tr>
+            </thead>
+            <tbody>${rows}</tbody>
+          </table>
+          <div class="total-line">Grand Total: ${Number(r.total || 0).toFixed(2)}$</div>
+          <div class="thanks">Thank you for using AWAD POS</div>
+          <script>
+            window.onload = function() { window.print(); };
+          <\/script>
+        </body>
+        </html>`;
+
+      const printWindow = window.open("", "_blank");
+      if (!printWindow) {
+        showMessage("Please allow popups to print the report", "error");
+        return;
+      }
+      printWindow.document.open();
+      printWindow.document.write(reportHtml);
+      printWindow.document.close();
     }
 
     function searchProduct() {
@@ -1101,6 +1144,7 @@
               id: item.id || "-",
               code: item.code || "-",
               name: item.name || "-",
+              desc: item.desc || item.description || "-",
               qty: 0,
               cost,
               price,
@@ -1114,6 +1158,7 @@
           stats[key].revenue += revenue;
           stats[key].costTotal += costTotal;
           stats[key].profit += profit;
+          stats[key].desc = item.desc || item.description || stats[key].desc || "-";
           stats[key].cost = cost;
           stats[key].price = price;
 
@@ -1160,6 +1205,7 @@
           <table class="admin-table">
             <tr>
               <th>Product</th>
+              <th>Description</th>
               <th>Qty Sold</th>
               <th>Cost / Unit</th>
               <th>Price / Unit</th>
@@ -1173,6 +1219,7 @@
           html += `
             <tr>
               <td>${row.name}</td>
+              <td class="admin-desc-cell">${row.desc || "-"}</td>
               <td>${row.qty}</td>
               <td>${row.cost.toFixed(2)}$</td>
               <td>${row.price.toFixed(2)}$</td>
@@ -1193,6 +1240,7 @@
           <tr>
             <th>ID</th>
             <th>Name</th>
+            <th>Description</th>
             <th>Current Stock</th>
             <th>Cost</th>
             <th>Price</th>
@@ -1214,6 +1262,7 @@
           <tr>
             <td>${p.id || "-"}</td>
             <td>${p.name || "-"}</td>
+            <td class="admin-desc-cell">${p.desc || "-"}</td>
             <td>${stock}</td>
             <td>${cost.toFixed(2)}$</td>
             <td>${price.toFixed(2)}$</td>
